@@ -17,34 +17,41 @@ using SebbyLib;
 
 namespace royalAio.Champions
 {
-    public static class Annie
+    public class Yone
     {
-        private static Spell Q, W, E, R;
+        private static Spell Q, Q3, W, E, R;
         private static Menu Config, menuQ, menuW, menuE, menuR, menuL, menuK, menuM, menuD;
         private static SpellSlot igniteSlot;
         private static AIHeroClient Me = ObjectManager.Player;
-        private static bool gotAggro;
+        private static bool YoneQ3;
 
         public static void OnGameLoad()
         {
-            if (Me.CharacterName != "Annie")
+            if (Me.CharacterName != "Yone")
             {
                 return;
             }
 
-            Q = new Spell(SpellSlot.Q, 625f);
-            W = new Spell(SpellSlot.W, 625f);
-            E = new Spell(SpellSlot.E, 800f);
-            R = new Spell(SpellSlot.R, 600f);
+            Q = new Spell(SpellSlot.Q, 475);
+            Q.SetSkillshot(0.33f, 15f, 5000f, false, SpellType.Line);
+            Q3 = new Spell(SpellSlot.Q, 950);
+            Q3.SetSkillshot(0.25f, 160f, 1500f, false, SpellType.Line);
+            W = new Spell(SpellSlot.W, 600f);
+            W.SetSkillshot(0.46f, 0f, 500f, false, SpellType.Cone);
+            E = new Spell(SpellSlot.E, 300f);
+            R = new Spell(SpellSlot.R, 1000);
+            R.SetSkillshot(0.75f, 255f, 1500f, false, SpellType.Line);
             
-            Q.SetTargetted(0.25f, float.MaxValue);
-            W.SetSkillshot(0.25f, 49f, float.MaxValue, false, SpellType.Cone);
-            R.SetSkillshot(0.25f, 250f, float.MaxValue, false, SpellType.Circle);
+            foreach (var item in GameObjects.EnemyHeroes)
+            {
+                var target = item;
+                ListDmg.Add(new DmgOnTarget(target.NetworkId, 0));
+            }
 
             igniteSlot = Me.GetSpellSlot("SummonerDot");
 
 
-            Config = new Menu("Annie", "[royalAio]: Annie", true);
+            Config = new Menu("Yone", "[royalAio]: Yone", true);
 
             menuQ = new Menu("Qsettings", "Q settings");
             menuQ.Add(new MenuBool("UseQ", "Use Q in Combo"));
@@ -56,16 +63,15 @@ namespace royalAio.Champions
 
             menuE = new Menu("Esettings", "E settings");
             menuE.Add(new MenuBool("UseE", "use E in Combo"));
-            menuE.Add(new MenuBool("aes", "Auto Cast E To Get Last Passive Stack"));
             Config.Add(menuE);
 
             menuR = new Menu("Rsettings", "R settings");
             menuR.Add(new MenuBool("UseR", "use R in Combo"));
-            menuR.Add(new MenuBool("UseRS", "use R only with stun"));
             Config.Add(menuR);
 
             menuL = new Menu("Clear", "Clear settings");
-            menuL.Add(new MenuBool("LhQ", "Q Last Hit"));
+            menuL.Add(new MenuBool("LhQ", "use Q to Last Hit"));
+            menuL.Add(new MenuBool("LcQ", "use Q to Laneclear"));
             menuL.Add(new MenuBool("LcW", "use W to Laneclear"));
             menuL.Add(new MenuBool("JcQ", "use Q to Jungleclear"));
             menuL.Add(new MenuBool("JcW", "use W to Jungleclear"));
@@ -78,9 +84,6 @@ namespace royalAio.Champions
             Config.Add(menuK);
 
             menuM = new Menu("Misc", "Misc settings");
-            menuM.Add(new MenuBool("Wag", "AntiGapCloser"));
-            menuM.Add(new MenuBool("Int", "W Interrupter"));
-            menuM.Add(new MenuBool("asf", "Auto Stack Passive In fountain"));
             menuM.Add(new MenuSliderButton("Skin", "SkindID", 0, 0, 30, false));
             Config.Add(menuM);
 
@@ -96,15 +99,72 @@ namespace royalAio.Champions
 
             GameEvent.OnGameTick += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
-            AIHeroClient.OnAggro += OnAggro;
-            Orbwalker.OnBeforeAttack += OnBeforeAA;
-            AntiGapcloser.OnGapcloser += OnGapCloser;
-            Interrupter.OnInterrupterSpell += Interrupterr;
+            AIBaseClient.OnBuffAdd += AIBaseClient_OnBuffAdd;
         }
 
         static int comb(Menu submenu, string sig)
         {
             return submenu[sig].GetValue<MenuList>().Index;
+        }
+        
+        private static List<DmgOnTarget> ListDmg = new List<DmgOnTarget>();
+        class DmgOnTarget
+
+        {
+            public int UID;
+            public double dmg;
+            public DmgOnTarget(int ID, double Dmg)
+            {
+                UID = ID;
+                dmg = Dmg;
+            }
+        }
+        
+        private static void AIBaseClient_OnBuffAdd(AIBaseClient sender, AIBaseClientBuffAddEventArgs args)
+        {
+            if (args.Buff.Name != "")
+                return;
+
+
+            var FindinList = ListDmg.Where(i => i.UID == sender.NetworkId);
+            if (FindinList.Count() >= 1)
+            {
+                var target = FindinList.FirstOrDefault();
+
+                //start dmg
+                target.dmg = 0;
+            }
+        }
+        
+        private static double GetEDmg(AIBaseClient target)
+        {
+            if (!target.HasBuff(""))
+                return 0;
+            var findinlist = ListDmg.Where(i => i.UID == target.NetworkId);
+            if (findinlist.Count() < 1)
+                return 0;
+
+            double dmg = 0;
+            var list = new double[]
+            {
+                0.25, 0.275, 0.3, 0.325, 0.35
+            };
+            var xtarget = findinlist.FirstOrDefault();
+            dmg += list[E.Level] * xtarget.dmg;
+
+            return dmg;
+        }
+        
+        private static bool isE2()
+        {
+            if (ObjectManager.Player.Mana > 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public static void OnGameUpdate(EventArgs args)
@@ -112,9 +172,10 @@ namespace royalAio.Champions
 
             if (Orbwalker.ActiveMode == OrbwalkerMode.Combo)
             {
+                LogicE();
                 LogicR();
                 LogicW();
-                LogicE();
+                LogicQ();
             }
 
             if (Orbwalker.ActiveMode == OrbwalkerMode.LaneClear)
@@ -132,11 +193,23 @@ namespace royalAio.Champions
             {
 
             }
-            basestack();
-            EStack();
-            Shield();
+            YoneQ33();
             Killsteal();
             skind();
+        }
+        
+        private static void YoneQ33()
+        {
+            if (!YoneQ3 && ObjectManager.Player.HasBuff("yoneq3ready"))
+            {
+                Q.Range = 950;
+                YoneQ3 = true;
+            }
+            else if (YoneQ3 && !ObjectManager.Player.HasBuff("yoneq3ready"))
+            {
+                Q.Range = 450;
+                YoneQ3 = false;
+            }
         }
 
         private static void skind()
@@ -218,38 +291,16 @@ namespace royalAio.Champions
                 }
             }
         }
-        
-        private static void OnAggro(AIBaseClient sender, AIBaseClientAggroEventArgs args)
-        {
-            if (!ObjectManager.Player.IsDead && sender.IsEnemy && !sender.IsMinion() &&
-                args.NetworkId == ObjectManager.Player.NetworkId) gotAggro = true;
-        }
 
-        private static bool InAARangeOf(this AIHeroClient player, AIHeroClient target)
+        private static void LogicQ()
         {
-            if (player.Distance(target.Position) < target.AttackRange) return true;
-            return false;
-        }
-
-        private static void OnBeforeAA(object sender, BeforeAttackEventArgs args)
-        {
-            if (Orbwalker.ActiveMode == OrbwalkerMode.Combo)
-            {
-                LogicQ(args.Target);
-            }
-        }
-
-
-        private static void LogicQ(AttackableUnit target)
-        {
-            var tt = target as AIBaseClient;
             var qtarget = Q.GetTarget(Q.Range);
             var useQ = Config["Qsettings"].GetValue<MenuBool>("UseQ");
             if (qtarget == null) return;
 
             if (Q.IsReady() && useQ.Enabled && qtarget.IsValidTarget(Q.Range) && Q.IsInRange(qtarget))
             {
-                Q.Cast(tt);
+                Q.Cast(qtarget);
             }
         }
 
@@ -271,19 +322,9 @@ namespace royalAio.Champions
             var useE = Config["Esettings"].GetValue<MenuBool>("UseE");
             if (etarget == null) return;
 
-            if (E.IsReady() && useE.Enabled)
+            if (E.IsReady() && useE.Enabled && !isE2() && etarget != null)
             {
-                var close = GameObjects.EnemyHeroes.Where(x =>
-                    Me.InAARangeOf(x) && x.IsFacing(Me) || x.GetWaypoints().LastOrDefault().DistanceToPlayer() < 100f);
-
-                if (gotAggro && !close.Any())
-                {
-                    gotAggro = false;
-                }
-                else if (gotAggro && close.Any())
-                {
-                    E.Cast();
-                }
+                E.Cast(etarget.Position);
             }
         }
 
@@ -291,84 +332,25 @@ namespace royalAio.Champions
         {
             var rtarget = R.GetTarget();
             var useR = Config["Rsettings"].GetValue<MenuBool>("UseR");
-            var useRS = Config["Rsettings"].GetValue<MenuBool>("UseRS");
             if (rtarget == null) return;
 
-            if (R.IsReady() && useR.Enabled && rtarget.IsValidTarget(R.Range) && !useRS.Enabled && R.GetDamage(rtarget) + W.GetDamage(rtarget) + Q.GetDamage(rtarget) >= rtarget.Health)
+            if (R.IsReady() && useR.Enabled && R.GetDamage(rtarget) + Q.GetDamage(rtarget) * 2 + W.GetDamage(rtarget) >= rtarget.Health && rtarget.IsValidTarget())
             {
-                R.Cast(rtarget.Position);
-            }
-            else if (R.IsReady() && useR.Enabled && useRS.Enabled && Me.HasBuff("anniepassiveprimed") &&
-                     R.GetDamage(rtarget) + W.GetDamage(rtarget) + Q.GetDamage(rtarget) >= rtarget.Health)
-            {
-                R.Cast(rtarget.Position);
-            }
-        }
-        
-        private static void Shield()
-        {
-            var target = E.GetTarget(E.Range);
-            var useE = Config["Esettings"].GetValue<MenuBool>("UseE");
-
-            foreach (var allies in GameObjects.AllyHeroes.Where(y => y.HealthPercent < 35 && useE.Enabled && y.DistanceToPlayer() < E.Range && !ObjectManager.Player.IsMe))
-            {
-                E.Cast(allies);
-            }
-        }
-        
-        private static void OnGapCloser(AIHeroClient sender, AntiGapcloser.GapcloserArgs args)
-        {
-            if (Config["Misc"].GetValue<MenuBool>("Wag").Enabled && Me.HasBuff("anniepassiveprimed"))
-            {
-                var target = sender;
-                if (target.IsValidTarget(W.Range))
-                {
-                    W.Cast(target, true);
-                }
-            }
-
-            return;
-        }
-        
-        private static void Interrupterr(AIHeroClient sender, Interrupter.InterruptSpellArgs args)
-        {
-            if (Config["Misc"].GetValue<MenuBool>("Int").Enabled && W.IsReady() && sender.IsValidTarget(2500) && Me.HasBuff("anniepassiveprimed"))
-            {
-                W.Cast(sender);
-            }
-        }
-        
-        private static void EStack()
-        {
-            var aes = Config["Esettings"].GetValue<MenuBool>("aes");
-            if (aes.Enabled && ObjectManager.Player.GetBuffCount("anniepassivestack") == 3 && E.IsReady())
-            {
-                E.Cast();
-            }
-        }
-        
-        private static void basestack()
-        {
-            var basestack = Config["Misc"].GetValue<MenuBool>("asf");
-            if (basestack.Enabled && ObjectManager.Player.InFountain() &&
-                ObjectManager.Player.GetBuffCount("anniepassivestack") < 4 && !ObjectManager.Player.HasBuff("anniepassiveprimed"))
-            {
-                W.Cast(Game.CursorPos);
-                E.Cast();
+                R.Cast(rtarget);
             }
         }
 
         private static void Jungle()
         {
-            var JcWw = Config["Clear"].GetValue<MenuBool>("JcW");
             var JcQq = Config["Clear"].GetValue<MenuBool>("JcQ");
+            var JcWw = Config["Clear"].GetValue<MenuBool>("JcW");
             var mobs = GameObjects.Jungle.Where(x => x.IsValidTarget(Q.Range)).OrderBy(x => x.MaxHealth)
                 .ToList<AIBaseClient>();
             if (mobs.Count > 0)
             {
                 var mob = mobs[0];
+                if (JcQq.Enabled && Q.IsReady() && Me.Distance(mob.Position) < Q.Range) Q.Cast(mob.Position);
                 if (JcWw.Enabled && W.IsReady() && Me.Distance(mob.Position) < W.Range) W.Cast(mob.Position);
-                if (JcQq.Enabled && Q.IsReady() && Me.Distance(mob.Position) < Q.Range) Q.Cast(mob);
             }
         }
 
@@ -389,20 +371,34 @@ namespace royalAio.Champions
                     }
                 }
             }
+            
+            var lcq = Config["Clear"].GetValue<MenuBool>("LcQ");
+            if (lcq.Enabled && Q.IsReady())
+            {
+                var minions = GameObjects.EnemyMinions.Where(x => x.IsValidTarget(Q.Range) && x.IsMinion())
+                    .Cast<AIBaseClient>().ToList();
+                if (minions.Any())
+                {
+                    var qFarmLoaction = Q.GetLineFarmLocation(minions);
+                    if (qFarmLoaction.Position.IsValid())
+                    {
+                        Q.Cast(qFarmLoaction.Position);
+                        return;
+                    }
+                }
+            }
         }
-
+        
         private static void LastHit()
         {
-            if (Config["Clear"].GetValue<MenuBool>("LhQ").Enabled)
-            {
-                var allMinions = GameObjects.EnemyMinions.Where(x => x.IsMinion() && !x.IsDead)
-                    .OrderBy(x => x.Distance(ObjectManager.Player.Position));
+            var allMinions = GameObjects.EnemyMinions.Where(x => x.IsMinion() && !x.IsDead)
+                .OrderBy(x => x.Distance(ObjectManager.Player.Position));
+            var qlh = Config["Clear"].GetValue<MenuBool>("LhQ");
 
-                foreach (var min in allMinions.Where(x => x.IsValidTarget(Q.Range) && x.Health < Q.GetDamage(x)))
-                {
-                    Orbwalker.ForceTarget = min;
-                    Q.Cast(min);
-                }
+            foreach (var min in allMinions.Where(x => x.IsValidTarget(Q.Range) && x.Health < Q.GetDamage(x) && qlh.Enabled))
+            {
+                Orbwalker.ForceTarget = min;
+                Q.Cast(min);
             }
         }
 
@@ -415,8 +411,6 @@ namespace royalAio.Champions
             var Wtarget = W.GetTarget(W.Range);
             var Rtarget = R.GetTarget(R.Range);
             
-            if (Qtarget == null) return;
-            if (Qtarget.IsInvulnerable) return;
             if (Wtarget == null) return;
             if (Wtarget.IsInvulnerable) return;
             if (Rtarget == null) return;
@@ -432,34 +426,34 @@ namespace royalAio.Champions
 
             if (!(Me.Distance(Rtarget.Position) <= R.Range) ||
                 !(RDamage(Rtarget) >= Rtarget.Health + OktwCommon.GetIncomingDamage(Rtarget))) return;
-            if (R.IsReady() && ksR) R.Cast(Rtarget.Position);
+            if (R.IsReady() && ksR) R.Cast(Rtarget);
         }
-
-        private static readonly float[] QBaseDamage = {0f, 80f, 115f, 150f, 185f, 220f, 220f};
         
-        private static readonly float[] WBaseDamage = {0f, 70f, 115f, 160f, 205f, 250f, 250f};
-        
-        private static readonly float[] RBaseDamage = {0f, 150f, 275f, 400f, 400f,};
+        private static readonly float[] QBaseDamage = {0f, 20f, 40f, 60f, 80f, 100f, 100f};
+        private static readonly float[] WBaseDamage = {0f, 10f, 20f, 30f, 40f, 50f, 50f};
+        private static readonly float[] whealDamage = {0f, .11f, .12f, .13f, .14f, .15f, .15f};
+        private static readonly float[] RBaseDamage = {0f, 200f, 400f, 600f, 600f};
 
         private static float QDamage(AIBaseClient Qtarget)
         {
-            var qLevel = Q.Level;
-            var qBaseDamage = QBaseDamage[qLevel] + .75f * Me.TotalMagicalDamage;
-            return (float) Me.CalculateDamage(Qtarget, DamageType.Magical, qBaseDamage);
+            var qlevel = Q.Level;
+            var qbaseDamage = QBaseDamage[qlevel] + 1.0f * Me.TotalAttackDamage;
+            return (float) Me.CalculateDamage(Qtarget, DamageType.Physical, qbaseDamage);
         }
-        
+
         private static float WDamage(AIBaseClient Wtarget)
         {
-            var wLevel = W.Level;
-            var wBaseDamage = WBaseDamage[wLevel] + .85f * Me.TotalMagicalDamage;
-            return (float) Me.CalculateDamage(Wtarget, DamageType.Magical, wBaseDamage);
+            var wlevel = W.Level;
+            var wBaseDamage = WBaseDamage[wlevel] + 100 - Wtarget.MaxHealth * whealDamage[wlevel];
+            return (float) Me.CalculateDamage(Wtarget, DamageType.Physical, wBaseDamage);
         }
         
         private static float RDamage(AIBaseClient Rtarget)
         {
-            var rLevel = R.Level;
-            var rBaseDamage = RBaseDamage[rLevel] + .75f * Me.TotalMagicalDamage;
-            return (float) Me.CalculateDamage(Rtarget, DamageType.Magical, rBaseDamage);
+            var rlevel = R.Level;
+            var rBaseDamage = RBaseDamage[rlevel] + .80 * Me.TotalAttackDamage;
+            return (float) Me.CalculateDamage(Rtarget, DamageType.Physical, rBaseDamage);
         }
+        
     }
 }

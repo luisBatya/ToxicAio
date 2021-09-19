@@ -10,6 +10,7 @@ Kassadin
 Khazix  
 Kindred  
 Kogmaw  
+Lucian (Currently Removed)  
 Morgana  
 Rengar  
 Tryndamere   

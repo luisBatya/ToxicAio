@@ -1,4 +1,4 @@
-toxicAio Discord: https://discord.gg/P9TmC3BwTt
+toxicAio Discord: https://discord.gg/xmMkQ8Ctem
 
 Currently Supported champions:
 

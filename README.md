@@ -6,6 +6,7 @@ Annie
 Ashe    
 Blitzcrank    
 Brand   
+Cassiopeia    
 Kassadin    
 Khazix    
 Kindred   

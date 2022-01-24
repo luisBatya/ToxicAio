@@ -24,5 +24,6 @@ Samira
 Tryndamere      
 Vex     
 Vladimir      
-Yone      
+Yone   
+Zeri (Beta)       
 Ziggs       

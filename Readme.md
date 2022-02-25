@@ -5,25 +5,26 @@ ToxicAio Discord: https://discord.gg/xmMkQ8Ctem
 Currently Supported champions:
 
 
-Annie         
-Akali         
+Annie     
+Akali       
 Ashe      
-Blitzcrank          
-Brand       
-Cassiopeia        
+Blitzcrank      
+Brand     
+Cassiopeia      
 Kassadin      
 Kennen      
 Khazix      
 Kindred     
 Kogmaw      
 Lucian (Beta)     
-Lux     
+lux     
 Morgana     
+Renata      
 Rengar      
 Samira      
 Tryndamere      
 Vex     
 Vladimir      
-Yone   
-Zeri (Beta)       
-Ziggs       
+Yone      
+Zeri      
+Ziggs     
